@@ -1,0 +1,204 @@
+---
+title: Who in the Big Ten Can Compare to Standout Caitlin Clark?
+author: Abby Post
+date: '2022-04-29'
+slug: who-in-the-big-ten-can-compare-to-standout-caitlin-clark
+categories: []
+tags: []
+---
+```{r message=FALSE, warning=FALSE, echo=FALSE }
+library(tidyverse)
+library(wehoop)
+library(cowplot)
+library(gt)
+```
+
+Whether you watch women's college basketball or not, if you're a sports fan you most likely know the name Caitlin Clark. Clark is a basketball player at the University of Iowa. The sophomore guard with her incredible shooting ability and quick decision making skills has made herself a name in college basketball. During the 2021-2022 season she won many honors including National Player of the week four different times, and Big Ten Player of the Year. She also was the first Division l athlete to lead the country in points per game and assists per game in the same season. 
+
+Clark is clearly deserving of her honors this season, but who in the Big Ten can compare to the standout? 
+
+Player efficiency rating is a calculated number combining different statistics to find a number representing a player's statistical performance. Caitlin Clark's player efficiency rating this season proves that her basketball skill is unique as other guards in the Big Ten don't come close. Although, Jacy Sheldon of Ohio State, Grace Berger of Indiana, Nia Clouden of Michigan State, and Jazz Shelley from Nebraska are four players that might be worth looking at.
+```{r message=FALSE, warning=FALSE, echo=FALSE }
+wbb_player_box <- wehoop:: load_wbb_player_box(2022)
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE }
+wbbplayerbox <- wbb_player_box %>%
+  separate(fg, into=c("fgmade", "fgattempted"), sep="-") %>%
+  separate(fg3, into=c("3ptmade", "3ptattempted"), sep="-") %>%
+  separate(ft, into=c("ftmade", "ftattempted"), sep="-") %>%
+  mutate_at(3:18, as.numeric) 
+```
+```{r message=FALSE, warning=FALSE, echo=FALSE }
+teams <- c("Nebraska", "Iowa", "Northwestern", "Rutgers", "Maryland", "Indiana", "Ohio State", "Michigan", "Michigan State", "Purdue", "Wisconsin", "Penn State", "Illinois")
+```
+
+
+```{r message=FALSE, warning=FALSE, echo=FALSE }
+ bigten <- wbbplayerbox %>%
+  filter( team_short_display_name %in% teams) %>%
+  group_by(athlete_display_name, team_short_display_name, athlete_position_name) %>%
+  summarize(
+    appearances = n(), 
+    fgs = sum(fgmade),
+    threefg = sum(`3ptmade`),
+    fts = sum(ftmade)
+  ) %>%
+  mutate(
+    twos = (fgs - threefg)*2,
+    threes = threefg*3
+  ) %>%
+  filter(appearances >= 30 & athlete_position_name == "Guard")
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE }
+playereff <- wbbplayerbox %>%
+  filter(team_short_display_name %in% teams) %>%
+  mutate(playereffrating = pts + reb + ast + stl + blk - (fgattempted-fgmade) - to) %>%
+  group_by(team_short_display_name, athlete_display_name, athlete_position_name) %>%
+  summarise(
+    appearances = n(),
+    avgplayereff = mean(playereffrating)
+  ) %>% 
+  filter(appearances >= 30 & athlete_position_name == "Guard") %>% ungroup() 
+```
+
+```{r message=FALSE, warning=FALSE, echo=FALSE }
+clark <- playereff %>%
+  filter(athlete_display_name == "Caitlin Clark")
+```
+```{r message=FALSE, warning=FALSE, echo=FALSE }
+playereff %>% select(
+  athlete_display_name, team_short_display_name, appearances, avgplayereff)  %>%
+  filter(avgplayereff >8) %>%
+  arrange(desc(avgplayereff)
+  ) %>%
+  gt() %>%
+  cols_label(
+    athlete_display_name = "Player",
+    team_short_display_name = "Team",
+    appearances = "Games Played",
+    avgplayereff = "Efficiency Rating" ) %>%
+tab_header(
+    title = "Clark Clear Leader in Player Efficiency",
+    subtitle = "Other top guards in Big Ten still stand far behind standout Caitlin Clark when comparing player efficiency."
+  ) %>% tab_style(
+    style = cell_text(color = "black", weight = "bold", align = "left"),
+    locations = cells_title("title")
+  ) %>% tab_style(
+    style = cell_text(color = "black", align = "left"),
+    locations = cells_title("subtitle")
+  ) %>%
+  tab_source_note(
+    source_note = md("**By:** Abby Post  |  **Source:** wehoop: The SportsDataverse's R Package for Women's Basketball Data")
+  ) %>%
+  tab_style(
+     locations = cells_column_labels(columns = everything()),
+     style = list(
+       cell_borders(sides = "bottom", weight = px(3)),
+       cell_text(weight = "bold", size=12)
+       )) %>%
+      tab_style(
+    style = list(
+      cell_fill(color = "gold"),
+      cell_text(color = "white")
+      ),
+    locations = cells_body(
+      rows = athlete_display_name == "Caitlin Clark")
+  )
+```
+
+Clark's shooting ability is something that makes her stand out. When comparing other top guards, Nia Clouden and Jacy Sheldon made the 2nd and 3rd most shots this season. Yet, the amount Clouden and Sheldon made still stands far below Clark's numbers which reach over 800 made shots. The numbers show that no other guards in the Big Ten can compare to Caitlin Clark's shooting ability.
+```{r message=FALSE, warning=FALSE, echo=FALSE }
+stackedbar <-bigten %>%
+  select(athlete_display_name, team_short_display_name, twos, threes, fts) %>%
+  group_by(athlete_display_name)
+
+```
+```{r message=FALSE, warning=FALSE, echo=FALSE }
+stackedbarlonger <-stackedbar %>% 
+  pivot_longer(
+    cols=3:5, 
+    names_to="Type", 
+    values_to="count")
+```
+```{r message=FALSE, warning=FALSE, echo=FALSE }
+ggplot() + 
+  geom_bar(data=stackedbarlonger, aes(x=reorder(athlete_display_name, count), weight=count, fill=Type)) + 
+  coord_flip() +
+  scale_fill_manual(values=c("purple", "blue", "black"), name="Type", labels=c("Free throws", "Three pointers", "Two pointers")) +
+labs(
+    x = "",
+    y = "Shots Made",
+    title="Caitlyn Clark is Obvious Best Shooter" , 
+    subtitle="Caitlyn Clark's shooting proves her ability above and beyond other Big Ten guards.", 
+    caption="By: Abby Post  | Source: wehoop: The SportsDataverse's R Package for Women's Basketball Data") +
+  theme_minimal() +
+     theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.title = element_text(size = 12),
+    plot.title.position = "plot"
+    )
+```
+```{r message=FALSE, warning=FALSE, echo=FALSE }
+topguards <- wbbplayerbox %>%
+  filter(team_short_display_name %in% teams) %>%
+  group_by(athlete_display_name, team_short_display_name, athlete_position_name) %>%
+  summarize(
+    appearances = n(),
+    ast = sum(ast),
+    reb = sum(reb),
+    stl = sum(stl)
+    ) %>%
+  filter(appearances >= 30 & athlete_position_name == "Guard") %>% ungroup()
+```
+When comparing other important factors such as assists, rebounds, and steals, we still see Clark come out on top in two of the three categories. Caitlin's assist statistics this year were one of the factors that helped her shine on the court. The numbers don't even compare when looking at other guards. Rebounds aren't as much of an outlier for Clark, with Jaenae Terry with Purdue and Jaz Shelly from Nebraska not far behind. Clark dominated more on offense than defense and she did not lead in steals this season. Although,she wasn't far behind the leader, Nicole Cardono-Hillary who played for Indiana.
+```{r message=FALSE, warning=FALSE, echo=FALSE }
+topAST <- topguards %>% top_n(10, wt=ast)
+topREB <- topguards %>% top_n(10, wt=reb)
+topSTL <-topguards %>% top_n(10, wt=stl)
+```
+```{r message=FALSE, warning=FALSE, echo=FALSE }
+bar1 <- ggplot() + 
+  geom_bar(data=topAST, aes(x=reorder(athlete_display_name, ast), weight=ast)) + 
+  coord_flip() + 
+  labs(
+    x = "",
+    y = "Assists"
+  )
+
+bar2 <- ggplot() + 
+  geom_bar(data=topREB, aes(x=reorder(athlete_display_name, reb), weight=reb)) + 
+  coord_flip() +
+  labs(
+    x = "",
+    y = "Rebounds" 
+      
+  )
+
+bar3 <- ggplot() + 
+  geom_bar(data=topSTL, aes(x=reorder(athlete_display_name, stl), weight=stl)) + 
+  coord_flip() +
+  labs(
+    x = "",
+    y = "Steals"
+  )
+```
+```{r message=FALSE, warning=FALSE, echo=FALSE }
+upper <- plot_grid(bar2, bar3)
+
+plot_grid(upper, bar1, nrow=2) +
+  labs(
+    title="Clark Also Leads in Rebounds and Assists" , 
+    subtitle="One thing Clark doesn't lead the guards in is steals, but she isn't far from the top either.", 
+    caption="By: Abby Post  | Source: wehoop: The SportsDataverse's R Package for Women's Basketball Data") +
+  theme_minimal() +
+     theme(
+    plot.title = element_text(size = 16, face = "bold"),
+    axis.title = element_text(size = 12),
+    plot.title.position = "plot"
+    )
+```
+With all of these statistics to compare, it is difficult to find a player who's numbers come anywhere near Caitlin Clark. She is a dominant player on offense and defense, who clearly has talent and ability above most at the collegiate level. A few Big Ten guards are great players who stick behind her, but no one can quite compare to the Iowa standout and Big Ten Player of the Year, Caitlin Clark. 
+
+The code is found [here] ()
